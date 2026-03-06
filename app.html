@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pasture</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f7f3ee; font-family: Georgia, serif; color: #2c2416; }
+    a { text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState } = React;
+
+    const ELDERS = [
+      { id: 1, name: "James Whitfield", email: "james@church.org", password: "pass" },
+      { id: 2, name: "Robert Harding", email: "robert@church.org", password: "pass" },
+    ];
+
+    const HOUSEHOLDS = {
+      1: [
+        { id: 101, name: "Anderson Family", head: "Tom & Sarah Anderson", phone: "434-555-0192", email: "andersons@email.com", address: "412 Maple Dr, Lynchburg VA 24501" },
+        { id: 102, name: "Chen Household", head: "David Chen", phone: "434-555-0347", email: "dchen@email.com", address: "88 Oak Lane, Lynchburg VA 24502" },
+        { id: 103, name: "Rivera Family", head: "Miguel & Carmen Rivera", phone: "434-555-0581", email: "riveras@email.com", address: "203 Pine St, Lynchburg VA 24503" },
+        { id: 104, name: "Thompson Family", head: "Greg & Lisa Thompson", phone: "434-555-0724", email: "thompsons@email.com", address: "17 Elm Ct, Lynchburg VA 24501" },
+        { id: 105, name: "Patel Household", head: "Raj Patel", phone: "434-555-0836", email: "raj.patel@email.com", address: "556 Cedar Blvd, Lynchburg VA 24502" },
+        { id: 106, name: "Williams Family", head: "Marcus & Tanya Williams", phone: "434-555-0912", email: "williams@email.com", address: "91 Birch Way, Lynchburg VA 24503" },
+        { id: 107, name: "O'Brien Household", head: "Patrick O'Brien", phone: "434-555-0143", email: "pobrien@email.com", address: "334 Walnut Ave, Lynchburg VA 24501" },
+      ],
+      2: [
+        { id: 201, name: "Foster Family", head: "Brian & Anne Foster", phone: "434-555-0267", email: "fosters@email.com", address: "78 Spruce Rd, Lynchburg VA 24502" },
+        { id: 202, name: "Kim Household", head: "James & Yuna Kim", phone: "434-555-0399", email: "jkim@email.com", address: "445 Hickory Ln, Lynchburg VA 24503" },
+      ],
+    };
+
+    const CONTACT_LOG_INIT = [
+      { id: 1, elderId: 1, householdId: 101, date: "2025-11-14", type: "Call", notes: "Checked in after Tom's surgery. Doing well, appreciated the call.", notified: false },
+      { id: 2, elderId: 1, householdId: 103, date: "2025-12-02", type: "Visit", notes: "Stopped by to drop off a meal. Great conversation.", notified: true },
+      { id: 3, elderId: 1, householdId: 102, date: "2026-01-19", type: "Coffee", notes: "Met at Common Market. David shared some concerns about his job situation.", notified: true },
+      { id: 4, elderId: 1, householdId: 105, date: "2026-02-08", type: "Text", notes: "Sent encouragement after hearing about family illness.", notified: false },
+    ];
+
+    const STAFF_RECIPIENTS = [
+      { id: "s1", name: "Pastor Mark Ellis", email: "mark@church.org" },
+      { id: "s2", name: "Elder Coord. Dan Shaw", email: "dan@church.org" },
+      { id: "s3", name: "Pastor of Care Beth Moore", email: "beth@church.org" },
+    ];
+
+    const CONTACT_TYPES = ["Text", "Call", "Visit", "Lunch", "Coffee"];
+
+    function daysSince(dateStr) {
+      if (!dateStr) return 999;
+      return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
+    }
+
+    function lastContactDate(householdId, logs) {
+      const entries = logs.filter(l => l.householdId === householdId).sort((a, b) => new Date(b.date) - new Date(a.date));
+      return entries.length ? entries[0].date : null;
+    }
+
+    function statusColor(days) {
+      if (days < 60) return { dot: "#4ade80", label: "Recent", bg: "rgba(74,222,128,0.12)" };
+      if (days < 120) return { dot: "#facc15", label: "Due Soon", bg: "rgba(250,204,21,0.12)" };
+      return { dot: "#f87171", label: "Overdue", bg: "rgba(248,113,113,0.12)" };
+    }
+
+    function formatDate(d) {
+      if (!d) return "Never contacted";
+      return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    }
+
+    function LoginScreen({ onLogin }) {
+      const [email, setEmail] = useState("");
+      const [password, setPassword] = useState("");
+      const [err, setErr] = useState("");
+
+      function handleLogin() {
+        const elder = ELDERS.find(e => e.email === email && e.password === password);
+        if (elder) onLogin(elder);
+        else setErr("Invalid email or password.");
+      }
+
+      return (
+        <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(160deg,#3b2f1e,#5c4530,#7a5c3a)",padding:24}}>
+          <div style={{background:"#faf7f2",borderRadius:20,padding:"48px 40px",width:"100%",maxWidth:380,boxShadow:"0 32px 80px rgba(0,0,0,0.35)",textAlign:"center"}}>
+            <div style={{width:64,height:64,borderRadius:"50%",background:"linear-gradient(135deg,#5c4530,#8a6840)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",fontSize:28}}>🌿</div>
+            <div style={{fontSize:34,color:"#2c2416",marginBottom:4}}>Pasture</div>
+            <div style={{fontSize:14,color:"#8a7560",marginBottom:36,letterSpacing:"0.04em",textTransform:"uppercase"}}>Elder Shepherding</div>
+            {err && <div style={{color:"#c0392b",fontSize:13,marginBottom:12}}>{err}</div>}
+            <input style={{width:"100%",padding:"13px 16px",borderRadius:10,border:"1.5px solid #d9cfc4",background:"#fff",fontSize:15,outline:"none",boxSizing:"border-box",marginBottom:14,fontFamily:"Georgia,serif"}} type="email" placeholder="Email address" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} />
+            <input style={{width:"100%",padding:"13px 16px",borderRadius:10,border:"1.5px solid #d9cfc4",background:"#fff",fontSize:15,outline:"none",boxSizing:"border-box",marginBottom:14,fontFamily:"Georgia,serif"}} type="password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} />
+            <button style={{width:"100%",padding:14,borderRadius:10,background:"linear-gradient(135deg,#5c4530,#8a6840)",color:"#faf7f2",border:"none",fontSize:16,fontFamily:"Georgia,serif",cursor:"pointer"}} onClick={handleLogin}>Sign In</button>
+          </div>
+        </div>
+      );
+    }
+
+    function Header({ elder, onLogout }) {
+      return (
+        <div style={{background:"linear-gradient(135deg,#3b2f1e,#5c4530)",padding:"0 20px",display:"flex",alignItems:"center",justifyContent:"space-between",height:60,position:"sticky",top:0,zIndex:50,boxShadow:"0 2px 12px rgba(0,0,0,0.2)"}}>
+          <div>
+            <div style={{color:"#f0e8dc",fontSize:22}}>Pasture</div>
+            <div style={{color:"#b8a090",fontSize:11,letterSpacing:"0.08em",textTransform:"uppercase"}}>{elder.name}</div>
+          </div>
+          <button style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",color:"#d4c4b0",borderRadius:8,padding:"6px 12px",fontSize:12,cursor:"pointer",fontFamily:"Georgia,serif"}} onClick={onLogout}>Sign Out</button>
+        </div>
+      );
+    }
+
+    function Dashboard({ elder, households, logs, onSelectHousehold, onLogContact }) {
+      const total = households.length;
+      const recentCount = households.filter(h => daysSince(lastContactDate(h.id, logs)) < 60).length;
+      const overdueCount = households.filter(h => daysSince(lastContactDate(h.id, logs)) >= 120).length;
+      return (
+        <div style={{padding:"20px 16px",maxWidth:480,margin:"0 auto"}}>
+          <div style={{background:"linear-gradient(135deg,#5c4530,#7a5c3a)",borderRadius:14,padding:"18px 20px",marginBottom:20,color:"#f0e8dc",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div><div style={{fontSize:28,fontWeight:600}}>{total}</div><div style={{fontSize:11,color:"#b8a090",letterSpacing:"0.08em",textTransform:"uppercase"}}>Households</div></div>
+            <div style={{textAlign:"center"}}><div style={{fontSize:28,fontWeight:600,color:"#4ade80"}}>{recentCount}</div><div style={{fontSize:11,color:"#b8a090",letterSpacing:"0.08em",textTransform:"uppercase"}}>Recent</div></div>
+            <div style={{textAlign:"right"}}><div style={{fontSize:28,fontWeight:600,color:overdueCount>0?"#f87171":"#4ade80"}}>{overdueCount}</div><div style={{fontSize:11,color:"#b8a090",letterSpacing:"0.08em",textTransform:"uppercase"}}>Overdue</div></div>
+          </div>
+          <button style={{width:"100%",padding:15,borderRadius:12,background:"linear-gradient(135deg,#5c4530,#8a6840)",color:"#faf7f2",border:"none",fontSize:16,fontFamily:"Georgia,serif",cursor:"pointer",marginBottom:20}} onClick={onLogContact}>+ Log a Contact</button>
+          <div style={{fontSize:11,letterSpacing:"0.12em",textTransform:"uppercase",color:"#8a7560",marginBottom:12}}>Your Households</div>
+          {households.map(h => {
+            const last = lastContactDate(h.id, logs);
+            const days = daysSince(last);
+            const status = statusColor(days);
+            return (
+              <div key={h.id} onClick={() => onSelectHousehold(h)} style={{background:"#fff",borderRadius:14,padding:"16px 18px",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",boxShadow:"0 1px 4px rgba(0,0,0,0.07)",border:"1.5px solid #ede7df"}}>
+                <div style={{display:"flex",alignItems:"center",flex:1}}>
+                  <div style={{width:10,height:10,borderRadius:"50%",background:status.dot,marginRight:12,flexShrink:0}} />
+                  <div>
+                    <div style={{fontSize:16,fontWeight:600,color:"#2c2416",marginBottom:2}}>{h.name}</div>
+                    <div style={{fontSize:12,color:"#8a7560"}}>{last ? `Last contact ${formatDate(last)}` : "Never contacted"}</div>
+                  </div>
+                </div>
+                <div style={{fontSize:10,letterSpacing:"0.06em",textTransform:"uppercase",padding:"3px 8px",borderRadius:20,fontWeight:600,background:status.bg,color:status.dot,flexShrink:0}}>{status.label}</div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    function HouseholdDetail({ household, logs, onBack, onLogContact }) {
+      const householdLogs = logs.filter(l => l.householdId === household.id).sort((a, b) => new Date(b.date) - new Date(a.date));
+      return (
+        <div style={{padding:"20px 16px",maxWidth:480,margin:"0 auto"}}>
+          <button style={{background:"none",border:"none",color:"#5c4530",fontSize:14,cursor:"pointer",fontFamily:"Georgia,serif",padding:"8px 0",marginBottom:16}} onClick={onBack}>← Back</button>
+          <div style={{background:"#fff",borderRadius:16,padding:"24px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)",border:"1.5px solid #ede7df",marginBottom:16}}>
+            <div style={{fontSize:22,fontWeight:600,color:"#2c2416",marginBottom:4}}>{household.name}</div>
+            <div style={{fontSize:14,color:"#8a7560",marginBottom:20}}>{household.head}</div>
+            <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:"1px solid #f0ebe4"}}>
+              <div style={{width:36,height:36,borderRadius:"50%",background:"#f7f3ee",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>📞</div>
+              <div><div style={{fontSize:12,color:"#8a7560",marginBottom:1}}>Phone</div><a href={`tel:${household.phone}`} style={{fontSize:14,color:"#5c4530",fontWeight:500}}>{household.phone}</a></div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:"1px solid #f0ebe4"}}>
+              <div style={{width:36,height:36,borderRadius:"50%",background:"#f7f3ee",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>✉️</div>
+              <div><div style={{fontSize:12,color:"#8a7560",marginBottom:1}}>Email</div><a href={`mailto:${household.email}`} style={{fontSize:14,color:"#5c4530",fontWeight:500}}>{household.email}</a></div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0"}}>
+              <div style={{width:36,height:36,borderRadius:"50%",background:"#f7f3ee",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>📍</div>
+              <div><div style={{fontSize:12,color:"#8a7560",marginBottom:1}}>Address</div><div style={{fontSize:14,color:"#2c2416",fontWeight:500}}>{household.address}</div></div>
+            </div>
+          </div>
+          <button style={{width:"100%",padding:15,borderRadius:12,background:"linear-gradient(135deg,#5c4530,#8a6840)",color:"#faf7f2",border:"none",fontSize:16,fontFamily:"Georgia,serif",cursor:"pointer",marginBottom:20}} onClick={() => onLogContact(household)}>+ Log Contact</button>
+          <div style={{fontSize:11,letterSpacing:"0.12em",textTransform:"uppercase",color:"#8a7560",marginBottom:12}}>Contact History ({householdLogs.length})</div>
+          {householdLogs.length === 0 && <div style={{textAlign:"center",color:"#8a7560",fontSize:14,padding:"20px 0"}}>No contacts logged yet.</div>}
+          {householdLogs.map(entry => (
+            <div key={entry.id} style={{background:"#faf7f2",borderRadius:10,padding:"12px 14px",marginBottom:8,border:"1px solid #ede7df"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                <span style={{background:"#5c4530",color:"#faf7f2",borderRadius:6,padding:"2px 8px",fontSize:11}}>{entry.type}</span>
+                <span style={{fontSize:12,color:"#8a7560"}}>{formatDate(entry.date)}</span>
+              </div>
+              {entry.notes && <div style={{fontSize:13,color:"#4a3828",lineHeight:1.5}}>{entry.notes}</div>}
+              {entry.notified && <div style={{fontSize:11,color:"#8a7560",marginTop:4}}>📤 Staff notified</div>}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    function LogContactForm({ households, preselectedHousehold, elderId, onSave, onCancel }) {
+      const today = new Date().toISOString().split("T")[0];
+      const [householdId, setHouseholdId] = useState(preselectedHousehold ? String(preselectedHousehold.id) : "");
+      const [date, setDate] = useState(today);
+      const [type, setType] = useState("");
+      const [notes, setNotes] = useState("");
+      const [notifyEnabled, setNotifyEnabled] = useState(false);
+      const [selectedRecipients, setSelectedRecipients] = useState([]);
+      const [err, setErr] = useState("");
+
+      function toggleRecipient(id) {
+        setSelectedRecipients(prev => prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id]);
+      }
+
+      function handleSubmit() {
+        if (!householdId) { setErr("Please select a household."); return; }
+        if (!type) { setErr("Please select a contact type."); return; }
+        onSave({ id: Date.now(), elderId, householdId: parseInt(householdId), date, type, notes, notified: notifyEnabled && selectedRecipients.length > 0, recipients: selectedRecipients });
+      }
+
+      return (
+        <div style={{padding:"20px 16px",maxWidth:480,margin:"0 auto"}}>
+          <button style={{background:"none",border:"none",color:"#5c4530",fontSize:14,cursor:"pointer",fontFamily:"Georgia,serif",padding:"8px 0",marginBottom:16}} onClick={onCancel}>← Cancel</button>
+          <div style={{background:"#fff",borderRadius:16,padding:"24px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)",border:"1.5px solid #ede7df"}}>
+            <div style={{fontSize:20,color:"#2c2416",marginBottom:20,fontWeight:600}}>Log a Contact</div>
+            {err && <div style={{color:"#c0392b",fontSize:13,marginBottom:12}}>{err}</div>}
+            <div style={{fontSize:12,color:"#8a7560",letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:6}}>Household</div>
+            <select style={{width:"100%",padding:"12px 14px",borderRadius:10,border:"1.5px solid #d9cfc4",background:"#fff",fontSize:15,color:"#2c2416",outline:"none",boxSizing:"border-box",marginBottom:18,fontFamily:"Georgia,serif"}} value={householdId} onChange={e=>setHouseholdId(e.target.value)}>
+              <option value="">Select a household…</option>
+              {households.map(h => <option key={h.id} value={String(h.id)}>{h.name}</option>)}
+            </select>
+            <div style={{fontSize:12,color:"#8a7560",letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:6}}>Date</div>
+            <input style={{width:"100%",padding:"12px 14px",borderRadius:10,border:"1.5px solid #d9cfc4",background:"#fff",fontSize:15,outline:"none",boxSizing:"border-box",marginBottom:18,fontFamily:"Georgia,serif"}} type="date" value={date} onChange={e=>setDate(e.target.value)} />
+            <div style={{fontSize:12,color:"#8a7560",letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:6}}>Type of Contact</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:18}}>
+              {CONTACT_TYPES.map(t => (
+                <button key={t} onClick={()=>setType(t)} style={{padding:"8px 16px",borderRadius:20,border:"1.5px solid",borderColor:type===t?"#5c4530":"#d9cfc4",background:type===t?"#5c4530":"#fff",color:type===t?"#faf7f2":"#5c4530",fontSize:14,cursor:"pointer",fontFamily:"Georgia,serif"}}>{t}</button>
+              ))}
+            </div>
+            <div style={{fontSize:12,color:"#8a7560",letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:6}}>Notes (optional)</div>
+            <textarea style={{width:"100%",padding:"12px 14px",borderRadius:10,border:"1.5px solid #d9cfc4",background:"#fff",fontSize:14,color:"#2c2416",outline:"none",boxSizing:"border-box",fontFamily:"Georgia,serif",resize:"vertical",minHeight:90,marginBottom:18,lineHeight:1.6}} placeholder="Any prayer requests, needs, or things to follow up on…" value={notes} onChange={e=>setNotes(e.target.value)} />
+            <div style={{background:"#faf7f2",borderRadius:10,padding:14,border:"1.5px solid #ede7df",marginBottom:20}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setNotifyEnabled(p=>!p)}>
+                <div style={{width:20,height:20,borderRadius:5,border:"1.5px solid #d9cfc4",background:notifyEnabled?"#5c4530":"#fff",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,flexShrink:0}}>{notifyEnabled&&"✓"}</div>
+                <div style={{fontSize:14,color:"#2c2416",fontWeight:500}}>Notify staff about this contact</div>
+              </div>
+              {notifyEnabled && (
+                <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:8}}>
+                  <div style={{fontSize:12,color:"#8a7560",marginBottom:4}}>Select recipients:</div>
+                  {STAFF_RECIPIENTS.map(r => (
+                    <div key={r.id} style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={()=>toggleRecipient(r.id)}>
+                      <div style={{width:18,height:18,borderRadius:4,border:"1.5px solid #d9cfc4",background:selectedRecipients.includes(r.id)?"#5c4530":"#fff",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:11,flexShrink:0}}>{selectedRecipients.includes(r.id)&&"✓"}</div>
+                      <div style={{fontSize:13,color:"#4a3828"}}>{r.name} <span style={{color:"#8a7560"}}>({r.email})</span></div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button style={{width:"100%",padding:15,borderRadius:12,background:"linear-gradient(135deg,#5c4530,#8a6840)",color:"#faf7f2",border:"none",fontSize:16,fontFamily:"Georgia,serif",cursor:"pointer"}} onClick={handleSubmit}>Save Contact Log</button>
+            <button style={{width:"100%",padding:13,borderRadius:12,background:"none",color:"#8a7560",border:"1.5px solid #d9cfc4",fontSize:15,fontFamily:"Georgia,serif",cursor:"pointer",marginTop:10}} onClick={onCancel}>Cancel</button>
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [elder, setElder] = useState(null);
+      const [view, setView] = useState("dashboard");
+      const [selectedHousehold, setSelectedHousehold] = useState(null);
+      const [preselectedHousehold, setPreselectedHousehold] = useState(null);
+      const [logs, setLogs] = useState(CONTACT_LOG_INIT);
+      const [showSuccess, setShowSuccess] = useState(false);
+
+      const households = elder ? (HOUSEHOLDS[elder.id] || []) : [];
+
+      function handleSaveLog(entry) {
+        setLogs(prev => [...prev, entry]);
+        setView("dashboard");
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+      }
+
+      if (!elder) return <LoginScreen onLogin={e => { setElder(e); setView("dashboard"); }} />;
+
+      return (
+        <div style={{minHeight:"100vh",background:"#f7f3ee",fontFamily:"Georgia,serif",color:"#2c2416"}}>
+          <Header elder={elder} onLogout={() => { setElder(null); setView("dashboard"); }} />
+          {showSuccess && (
+            <div style={{maxWidth:480,margin:"12px auto 0",padding:"0 16px"}}>
+              <div style={{background:"#d1fae5",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"14px 16px",fontSize:14,color:"#065f46",textAlign:"center"}}>✓ Contact logged successfully!</div>
+            </div>
+          )}
+          {view === "dashboard" && <Dashboard elder={elder} households={households} logs={logs} onSelectHousehold={h => { setSelectedHousehold(h); setView("household"); }} onLogContact={() => { setPreselectedHousehold(null); setView("logForm"); }} />}
+          {view === "household" && selectedHousehold && <HouseholdDetail household={selectedHousehold} logs={logs} onBack={() => setView("dashboard")} onLogContact={h => { setPreselectedHousehold(h); setView("logForm"); }} />}
+          {view === "logForm" && <LogContactForm households={households} preselectedHousehold={preselectedHousehold} elderId={elder.id} onSave={handleSaveLog} onCancel={() => setView(selectedHousehold ? "household" : "dashboard")} />}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
